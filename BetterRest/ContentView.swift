@@ -13,10 +13,7 @@ struct ContentView: View {
     @State private var sleepAmount = 8.0
     @State private var coffeeAmount = 1
     @State private var coffeIndex = 0
-    
-    @State private var alertTitle = ""
-    @State private var alertMessage = ""
-    @State private var showingAlert = false
+    @State private var bestTimeRecommanded: Date? = nil
     
     static var defaultWakeTime: Date {
         var components = DateComponents()
@@ -46,21 +43,37 @@ struct ContentView: View {
                     }
                     // Stepper("^[\(coffeeAmount) cup](inflect: true)", value: $coffeeAmount, in: 1...20)
                 }
+                Section() {
+                    Text("Your ideal bedtime is \(bestTimeRecommanded?.formatted(date: .omitted, time: .shortened) ?? "calculating...")")
+                        .font(.title)
+                }
+            }
+            .onChange(of: wakeUp, { oldValue, newValue in
+                bestTimeRecommanded = calculateBedTime()
+            })
+            .onChange(of: sleepAmount, { oldValue, newValue in
+                bestTimeRecommanded = calculateBedTime()
+            })
+            .onChange(of: coffeeAmount, { oldValue, newValue in
+                bestTimeRecommanded = calculateBedTime()
+            })
+            .onAppear {
+                bestTimeRecommanded = calculateBedTime()
             }
             .navigationTitle("BetterRest")
-            .toolbar {
+            /*.toolbar {
                 Button("Calculate", action: calculateBedTime)
                     .alert(alertTitle, isPresented: $showingAlert) {
                         Button("OK") { }
                     } message: {
                         Text(alertMessage)
                     }
-            }
+            }*/
         }
         
     }
     
-    func calculateBedTime() {
+    func calculateBedTime() -> Date? {
         do {
             let config = MLModelConfiguration()
             let model = try SleepCalculator(configuration: config)
@@ -72,14 +85,11 @@ struct ContentView: View {
             let prediction = try model.prediction(wake: Double(hour + minute), estimatedSleep: sleepAmount, coffee: Double(coffeeAmount))
             
             
-            let sleepTime = wakeUp - prediction.actualSleep
-            alertTitle = "Your ideal bedtime is..."
-            alertMessage = sleepTime.formatted(date: .omitted, time: .shortened)
+            return wakeUp - prediction.actualSleep
         } catch {
-            alertTitle = "Error"
-            alertMessage = "Sorry, there was a problem calculating your bedtime."
+            return nil
         }
-        showingAlert = true
+
     }
 }
 
